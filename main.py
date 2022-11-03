@@ -7,9 +7,7 @@ import requests
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 
-
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from webdriver_manager.firefox import GeckoDriverManager
+import plotly.graph_objects as go
 
 
 teams_adress_A = {'palmeiras' : 'palmeiras/1963', 'internacional' : 'internacional/1966', 'flamengo' : 'flamengo/5981', 'fluminense' : 'fluminense/1961',
@@ -23,44 +21,49 @@ teams_adress_B = {'cruzeiro' : 'cruzeiro/1954', 'gremio' : 'gremio/5926', 'vasco
 'guarani' : 'guarani/1972', 'vila nova' : 'vila-nova/2021',  'ponte preta' : 'ponte-preta/1969', 'tombense' : 'tombense/87202', 'chapecoense' : 'chapecoense/21845',
 'csa' : 'csa/2010', 'novorizontino' : 'novorizontino/135514', 'brusque' : 'brusque-fc/21884', 'operario' : 'operario/39634', 'nautico' : 'nautico/2011'}
 
-base_url = 'https://www.sofascore.com/team/football/'
 
-def team_search(time:str):
 
-    
-    driver = webdriver.Chrome(ChromeDriverManager().install())
-    
-    url = base_url + teams_adress_A[time]
+# import requests
+# url = 'https://www.sofascore.com/team/football/palmeiras/1963'
+# browsers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \(KHTML, like Gecko) Chrome / 86.0.4240.198Safari / 537.36"}
+# page = requests.get(url, headers=browsers)
+# with open('my_page.html', 'w',  encoding="utf-8") as f: f.write(page.content.decode("utf-8"))
 
-    driver.get(url)
 
-    soup = BeautifulSoup(driver.page_source, 'lxml')
 
-    test = str(soup)
 
-    tree = html.fromstring(test)
 
-    data_dict = {}
+# base_url = 'https://www.sofascore.com/team/football/'
 
-    for i in range(2, 7):
-        base_xpath = f'//*[@id="__next"]/div/main/div/div[2]/div[2]/div/div[2]/div[3]/div[{i}]/div[2]/div[*]/'
-        elements_1 = tree.xpath(base_xpath + 'span[1]')
-        elements_2 = tree.xpath(base_xpath + 'span[2]')
-        for data in range(len(elements_1)):
-            if data == 0: 
-                data_dict['Time'] = time.title()
-            data_dict[elements_1[data].text] = elements_2[data].text
-    
-
-    return data_dict
+# def team_search(time:str):
 
     
-# dictfinal = {}
-# listao = []
-# for key, value in teams_adress_A.items():
-#   listao.append(team_search(key))
+#     driver = webdriver.Chrome(ChromeDriverManager().install())
+    
+#     url = base_url + teams_adress_A[time]
 
-# dataframe = pd.DataFrame(listao[5].values(), listao[5].keys(), columns=['Valores'])
+#     driver.get(url)
+
+#     soup = BeautifulSoup(driver.page_source, 'lxml')
+
+#     test = str(soup)
+
+#     tree = html.fromstring(test)
+
+#     data_dict = {}
+
+#     for i in range(2, 7):
+#         base_xpath = f'//*[@id="__next"]/div/main/div/div[2]/div[2]/div/div[2]/div[3]/div[{i}]/div[2]/div[*]/'
+#         elements_1 = tree.xpath(base_xpath + 'span[1]')
+#         elements_2 = tree.xpath(base_xpath + 'span[2]')
+#         for data in range(len(elements_1)):
+#             if data == 0: 
+#                 data_dict['Time'] = time.title()
+#             data_dict[elements_1[data].text] = elements_2[data].text
+    
+
+#     return data_dict
+
 
 
 
@@ -69,6 +72,9 @@ browsers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit
 
 base_api = 'https://api.sofascore.com/api/v1/team/'
 end_api = '/statistics/overall'
+
+pd.options.display.max_rows = 150
+
 
 
 def escolhe_time(time:str):
@@ -111,11 +117,8 @@ def escolhe_time(time:str):
     url_21 = base_api + id_time + middle_api + enpoint_21 + end_api
     url_22 = base_api + id_time + middle_api + enpoint_22 + end_api
 
-    if division == 'A':
-        urls_list = [url_17, url_18, url_19, url_20, url_21, url_22]
-    if division == 'B':
-        urls_list = [url_17, url_18, url_19, url_20, url_21, url_22]
-
+    urls_list = [url_17, url_18, url_19, url_20, url_21, url_22]
+    
 
     for url in urls_list:
         api_link = requests.get(url, headers = browsers).json()
@@ -146,49 +149,27 @@ def build_dataframe(time:str):
 
     for i in range(len(team)):
         team_dataframe[str(team[i]['ano'])] = team[i].values()
+        team_dataframe[str(team[i]['ano'])] = team_dataframe[str(team[i]['ano'])].apply(lambda x: float("{:.0f}".format(x)))
 
-    team_dataframe['Media'] = team_dataframe.mean(axis=1)
+    team_dataframe['Media'] = team_dataframe.mean(axis=1).apply(lambda x: float("{:.1f}".format(x)))
 
     return team_dataframe
 
-# pages_list = []
-# id_time = teams_adress_A['flamengo'][-4:]
-# url_17 = base_api + id_time + middle_api + enpoint_17 + end_api
-# url_18 = base_api + id_time + middle_api + enpoint_18 + end_api
-# pages_list.append(requests.get(url_17, headers = browsers).json())
-# pages_list.append(requests.get(url_18, headers = browsers).json())
 
 
-   
-# Palmeiras
+def build_chart(metric:str, time1:str, time2:str):
+    df_time1 = build_dataframe(time1.lower())
+    df_time2 = build_dataframe(time2.lower())
+    anos=['2017', '2018', '2019', '2020', '2021', '2022']
 
-#  https://api.sofascore.com/api/v1/team/ 1954    /unique-tournament/ 390 /season/    36162/  statistics/overall
+    fig = go.Figure(
+        data=[
+            go.Bar(name=time1, x=anos, y=[df_time1['2017'][metric], df_time1['2018'][metric], df_time1['2019'][metric], df_time1['2020'][metric], df_time1['2021'][metric], df_time1['2022'][metric]]),
+            go.Bar(name=time2, x=anos, y=[df_time2['2017'][metric], df_time2['2018'][metric], df_time2['2019'][metric], df_time2['2020'][metric], df_time2['2021'][metric], df_time2['2022'][metric]])
 
-# # 20/21
-#  https://api.sofascore.com/api/v1/team/ 1963    /unique-tournament/ 325 /season/    27591/  statistics/overall
-# https://api.sofascore.com/api/v1/unique-tournament/325/season/27591/top-teams/overall
-
-# 21
-# https://api.sofascore.com/api/v1/team/1963/unique-tournament/325/season/36166/statistics/overall
-# https://api.sofascore.com/api/v1/unique-tournament/325/season/36166/top-teams/overall
-
-# 22
-# https://api.sofascore.com/api/v1/team/1963/unique-tournament/325/season/40557/statistics/overall
-# https://api.sofascore.com/api/v1/unique-tournament/325/season/40557/top-teams/overall
-
-
-
-# Flamengo
-
-
-# 20/21
-# https://api.sofascore.com/api/v1/team/5981/unique-tournament/325/season/27591/statistics/overall
-# https://api.sofascore.com/api/v1/unique-tournament/325/season/27591/top-teams/overall
-
-# 21
-# https://api.sofascore.com/api/v1/team/5981/unique-tournament/325/season/36166/statistics/overall
-# https://api.sofascore.com/api/v1/unique-tournament/325/season/36166/top-teams/overall
-
-# 22
-# https://api.sofascore.com/api/v1/team/5981/unique-tournament/325/season/40557/statistics/overall
-# https://api.sofascore.com/api/v1/unique-tournament/325/season/40557/top-teams/overall
+        ],
+        layout_title_text = metric
+    )
+    
+    return fig.show()
+        
